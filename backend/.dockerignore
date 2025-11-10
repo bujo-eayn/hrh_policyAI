@@ -1,0 +1,23 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+venv
+env
+.venv
+
+# Testing
+.pytest_cache
+.coverage
+*.log
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode
+.idea

@@ -1,0 +1,24 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+venv
+env
+.venv
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Testing
+*.log
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode
+.idea

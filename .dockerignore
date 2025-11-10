@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info
+dist
+build
+venv
+env
+.venv
+ENV
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov
+*.log
+logs/
+
+# Documentation (except README)
+*.md
+!README.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+data/uploads/*
+data/documents/*
+.env
+.env.local
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Tests
+tests/
+test_*
+
+# Ignore docs Folder
+docs/
+
+# Ignore Claude files
+.claude/
