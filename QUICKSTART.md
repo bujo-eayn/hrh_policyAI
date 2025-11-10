@@ -142,9 +142,6 @@ Place documents in `data/documents/` folder, then:
 # With Docker
 docker compose exec backend python /app/scripts/ingest_documents.py
 
-# Manual setup (with venv activated)
-cd backend
-python ../scripts/ingest_documents.py
 ```
 
 ---
@@ -207,7 +204,6 @@ docker compose down -v
 1. Check the **Common Issues** section above
 2. Review logs:
    - Docker: `docker compose logs -f`
-   - Manual: Check terminal outputs
 3. Verify prerequisites are installed correctly
 4. Check [docs/DOCKER.md](docs/DOCKER.md) for detailed troubleshooting
 

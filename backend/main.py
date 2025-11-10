@@ -5,16 +5,25 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import asyncio
+import logging
 
 from backend.config import settings
 from backend.api.routes import router
 from backend.database.connection import check_db_connection, init_db
 from backend.services.ollama_client import ollama_client
+
+
+# Configure logging based on environment
+logging.basicConfig(
+    level=logging.DEBUG if settings.ENVIRONMENT == "development" else logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -74,15 +83,39 @@ app.add_middleware(
 )
 
 
-# Global exception handler
+# Global exception handler for HTTPException
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Handle HTTP exceptions with structured error response."""
+    logger.warning(f"HTTP Exception: {exc.status_code} - {exc.detail}")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail if isinstance(exc.detail, str) else str(exc.detail),
+            "message": exc.detail,
+            "status_code": exc.status_code
+        }
+    )
+
+
+# Global exception handler for all other exceptions
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Handle all uncaught exceptions."""
+    # Log full error in development, minimal in production
+    if settings.ENVIRONMENT == "development":
+        logger.error(f"Unhandled exception: {exc}", exc_info=True)
+        error_detail = str(exc)
+    else:
+        logger.error(f"Unhandled exception: {type(exc).__name__}")
+        error_detail = "An unexpected error occurred. Please try again later."
+
     return JSONResponse(
         status_code=500,
         content={
-            "error": "Internal server error",
-            "detail": str(exc) if settings.DEBUG else "An unexpected error occurred"
+            "error": "INTERNAL_SERVER_ERROR",
+            "message": error_detail,
+            "status_code": 500
         }
     )
 

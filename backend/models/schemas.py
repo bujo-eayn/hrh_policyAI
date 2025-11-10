@@ -8,6 +8,26 @@ from uuid import UUID
 
 
 # ============================================================================
+# Error Response Schema
+# ============================================================================
+
+class ErrorResponse(BaseModel):
+    """Schema for structured error responses."""
+    error: str
+    message: str
+    details: Optional[Dict[str, Any]] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "error": "VALIDATION_ERROR",
+                "message": "Invalid input data",
+                "details": {"field": "email", "reason": "Invalid email format"}
+            }
+        }
+
+
+# ============================================================================
 # Authentication Schemas
 # ============================================================================
 

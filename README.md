@@ -322,35 +322,6 @@ docker compose exec backend python /app/scripts/ingest_documents.py
 
 ## 🛠️ Development
 
-### Manual Setup (Non-Docker)
-
-For local development with hot-reload:
-
-```bash
-# 1. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# OR
-venv\Scripts\activate  # Windows
-
-# 2. Start database only
-docker compose up -d postgres
-
-# 3. Install dependencies
-cd backend && pip install -r requirements.txt
-cd ../frontend && pip install -r requirements.txt
-
-# 4. Configure for local dev
-cp .env.example .env
-# Edit .env: POSTGRES_HOST=localhost
-
-# 5. Start services
-cd backend && python main.py  # Terminal 1
-cd frontend && streamlit run app.py  # Terminal 2
-```
-
-**See [QUICKSTART.md](QUICKSTART.md) for detailed instructions**
-
 ### Docker Development
 
 ```bash

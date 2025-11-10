@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     # Application Settings
     APP_NAME: str = "HRH-PolicyAI"
     APP_VERSION: str = "1.0.0"
+    ENVIRONMENT: str = "development"  # development or production
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 

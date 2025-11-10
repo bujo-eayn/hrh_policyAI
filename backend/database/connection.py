@@ -55,8 +55,9 @@ def check_db_connection():
     Returns True if connection successful, False otherwise.
     """
     try:
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         return True
     except Exception as e:

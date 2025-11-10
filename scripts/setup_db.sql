@@ -70,7 +70,7 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
 INSERT INTO users (email, password_hash, full_name, role)
 VALUES (
     'admin@hrh-policy.ke',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5OMh8TMVR.H3i',
+    '$2b$12$unSl.qh5Ad2RS4VGgb0DgeFXexjGNW80thUF939OxaTpK6tgh6nK.',
     'System Administrator',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;
@@ -79,7 +79,7 @@ VALUES (
 INSERT INTO users (email, password_hash, full_name, role)
 VALUES (
     'user@hrh-policy.ke',
-    '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW',
+    '$2b$12$XupCMGHs93feKSwIb0Jum.Zsbk7dP3Zm2F30FKVf53wUPEGe7VyAS',
     'Test User',
     'user'
 ) ON CONFLICT (email) DO NOTHING;

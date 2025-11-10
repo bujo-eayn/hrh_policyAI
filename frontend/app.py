@@ -25,6 +25,37 @@ st.set_page_config(
 # API Helper Functions
 # ============================================================================
 
+def extract_error_message(response) -> str:
+    """Extract user-friendly error message from API response."""
+    try:
+        error_data = response.json()
+        # Check for structured error response
+        if isinstance(error_data, dict):
+            # Try different possible error message fields
+            if "message" in error_data:
+                return error_data["message"]
+            elif "detail" in error_data:
+                return error_data["detail"]
+            elif "error" in error_data:
+                return error_data["error"]
+        return str(error_data)
+    except:
+        # Fallback to generic messages based on status code
+        status_code = response.status_code
+        if status_code == 400:
+            return "Invalid request. Please check your input."
+        elif status_code == 401:
+            return "Authentication failed. Please login again."
+        elif status_code == 403:
+            return "You don't have permission to perform this action."
+        elif status_code == 404:
+            return "The requested resource was not found."
+        elif status_code == 500:
+            return "Server error. Please try again later."
+        else:
+            return f"Request failed with status code {status_code}"
+
+
 def api_request(
     endpoint: str,
     method: str = "GET",
@@ -62,8 +93,19 @@ def api_request(
         response.raise_for_status()
         return response.json()
 
+    except requests.exceptions.HTTPError as e:
+        # Extract user-friendly error message
+        error_msg = extract_error_message(e.response)
+        st.error(error_msg)
+        return None
+    except requests.exceptions.ConnectionError:
+        st.error("Connection error: Unable to reach the server. Please check if the backend is running.")
+        return None
+    except requests.exceptions.Timeout:
+        st.error("Request timeout: The server is taking too long to respond.")
+        return None
     except requests.exceptions.RequestException as e:
-        st.error(f"API Error: {str(e)}")
+        st.error(f"Unexpected error: {str(e)}")
         return None
 
 
@@ -112,8 +154,16 @@ def login(email: str, password: str) -> bool:
 
         return True
 
+    except requests.exceptions.HTTPError as e:
+        # Extract user-friendly error message
+        error_msg = extract_error_message(e.response)
+        st.error(error_msg)
+        return False
+    except requests.exceptions.ConnectionError:
+        st.error("Cannot connect to server. Please check if the backend is running.")
+        return False
     except requests.exceptions.RequestException as e:
-        st.error(f"Login failed: {str(e)}")
+        st.error("Login failed. Please try again.")
         return False
 
 
@@ -128,8 +178,16 @@ def register(email: str, password: str, full_name: str) -> bool:
         st.success("Registration successful! Please login.")
         return True
 
+    except requests.exceptions.HTTPError as e:
+        # Extract user-friendly error message
+        error_msg = extract_error_message(e.response)
+        st.error(error_msg)
+        return False
+    except requests.exceptions.ConnectionError:
+        st.error("Cannot connect to server. Please check if the backend is running.")
+        return False
     except requests.exceptions.RequestException as e:
-        st.error(f"Registration failed: {str(e)}")
+        st.error("Registration failed. Please try again.")
         return False
 
 
