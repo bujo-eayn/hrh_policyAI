@@ -29,11 +29,13 @@ class DocumentProcessor:
         self.allowed_extensions = settings.ALLOWED_FILE_TYPES
 
         # Initialize tokenizer for chunk size calculation
+        self.tokenizer = None
         try:
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        except:
+            print(f"DocumentProcessor: Tokenizer initialized. Chunk size: {self.chunk_size} tokens")
+        except Exception as e:
             # Fallback to basic word-based chunking
-            self.tokenizer = None
+            print(f"DocumentProcessor: Failed to initialize tokenizer: {e}. Using fallback character-based chunking.")
 
     def validate_file(self, file_path: str) -> Tuple[bool, str]:
         """
@@ -225,8 +227,9 @@ class DocumentProcessor:
                     break
         else:
             # Character-based chunking (fallback)
-            char_size = self.chunk_size * 4  # Approximate
-            char_overlap = self.chunk_overlap * 4
+            # 200 tokens * 3 chars/token = 600 characters max per chunk (very conservative)
+            char_size = self.chunk_size * 3
+            char_overlap = self.chunk_overlap * 3
 
             for i in range(0, len(text), char_size - char_overlap):
                 chunk_text = text[i:i + char_size]
