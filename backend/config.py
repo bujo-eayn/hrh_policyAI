@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_LLM_MODEL: str = "gemma3:latest"
     OLLAMA_EMBEDDING_MODEL: str = "mxbai-embed-large:latest"
-    OLLAMA_TIMEOUT: int = 300
+    OLLAMA_TIMEOUT: int = 600
 
     # Application Settings
     APP_NAME: str = "HRH-PolicyAI"
