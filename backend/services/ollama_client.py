@@ -148,8 +148,18 @@ class OllamaClient:
             List of floats representing the embedding (1024 dimensions)
 
         Raises:
-            Exception: If embedding generation fails
+            Exception: If embedding generation fails or text is too long
         """
+        # Pre-validation: mxbai-embed-large has 512 token limit
+        # Use extremely conservative character limit (1 token ≈ 3 chars to be safe)
+        max_safe_chars = 512 * 3  # 1536 characters max
+        
+        if len(text) > max_safe_chars:
+            raise ValueError(
+                f"Text too long for embedding model: {len(text)} chars > {max_safe_chars} chars "
+                f"(safe limit for mxbai-embed-large). This should have been caught earlier in the pipeline."
+            )
+        
         try:
             payload = {
                 "model": self.embedding_model,

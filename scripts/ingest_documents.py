@@ -61,27 +61,38 @@ async def ingest_document(
         db.commit()
         db.refresh(document)
 
-        print(f"   ✓ Document record created (ID: {document.id})")
+        print(f" ✓ Document record created (ID: {document.id})")
 
         # Generate embeddings and create chunks
         print(f"   Generating embeddings for {processed_data['chunk_count']} chunks...")
 
-        for i, chunk_data in enumerate(processed_data["chunks"]):
-            # Generate embedding
-            embedding = await embedding_service.generate_embedding(chunk_data["content"])
+        # Step 1: Process document and get chunks (already done)
+        processed_doc = document_processor.process_document(file_path)
 
-            # Create chunk record
-            chunk = DocumentChunk(
+        # Step 2: Save chunks in DB and collect their IDs
+        chunk_ids = []
+        for chunk_data in processed_doc["chunks"]:
+            db_chunk = DocumentChunk(
                 document_id=document.id,
                 content=chunk_data["content"],
-                embedding=embedding,
                 chunk_index=chunk_data["chunk_index"],
                 metadata={"token_count": chunk_data.get("token_count", 0)}
             )
-            db.add(chunk)
+            db.add(db_chunk)
+            db.commit()
+            db.refresh(db_chunk)
+            chunk_ids.append(str(db_chunk.id))
 
-            if (i + 1) % 10 == 0:
-                print(f"   Progress: {i + 1}/{processed_data['chunk_count']} chunks")
+        print(f" ✓ Saved {len(chunk_ids)} chunks to DB")
+
+        # Step 3: Generate embeddings for all chunks at once
+        print(f" Generating embeddings for {len(chunk_ids)} chunks...")
+        await embedding_service.generate_document_embeddings(
+            # text="",  # text is not used inside generate_document_embeddings anymore
+            db=db,
+            chunk_ids=chunk_ids
+        )
+        print(f" ✓ Embeddings generated and stored")
 
         # Mark document as processed
         document.is_processed = True
@@ -90,7 +101,7 @@ async def ingest_document(
 
         db.commit()
 
-        print(f"   ✓ Document ingestion complete!")
+        print(f" ✓ Document ingestion complete!")
         return True
 
     except Exception as e:

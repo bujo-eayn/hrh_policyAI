@@ -171,20 +171,31 @@ async def upload_document(
     try:
         processed_data = document_processor.process_document(file_path)
 
-        # Create chunks with embeddings
-        for chunk_data in processed_data["chunks"]:
-            # Generate embedding
-            embedding = await embedding_service.generate_embedding(chunk_data["content"])
+        print(f"Processing document: {title}")
+        print(f"  Total chunks: {processed_data['chunk_count']}")
+        print(f"  Total text length: {processed_data['total_text_length']} characters")
+        print(f"  Total tokens: {processed_data['total_tokens']}")
 
-            # Create chunk record
-            chunk = DocumentChunk(
-                document_id=document.id,
-                content=chunk_data["content"],
-                embedding=embedding,
-                chunk_index=chunk_data["chunk_index"],
-                metadata={"token_count": chunk_data.get("token_count", 0)}
-            )
-            db.add(chunk)
+        # Create chunks with embeddings
+        for chunk_idx, chunk_data in enumerate(processed_data["chunks"], 1):
+            try:
+                print(f"  Embedding chunk {chunk_idx}/{processed_data['chunk_count']}...", end=" ", flush=True)
+                # Generate embedding
+                embedding = await embedding_service.generate_embedding(chunk_data["content"])
+                print("✓")
+
+                # Create chunk record
+                chunk = DocumentChunk(
+                    document_id=document.id,
+                    content=chunk_data["content"],
+                    embedding=embedding,
+                    chunk_index=chunk_data["chunk_index"],
+                    metadata={"token_count": chunk_data.get("token_count", 0)}
+                )
+                db.add(chunk)
+            except Exception as chunk_error:
+                print(f"✗ Failed to embed chunk {chunk_idx}")
+                raise Exception(f"Failed to embed chunk {chunk_idx}/{processed_data['chunk_count']}: {str(chunk_error)}")
 
         # Mark document as processed
         document.is_processed = True
@@ -192,6 +203,7 @@ async def upload_document(
 
         db.commit()
         db.refresh(document)
+        print(f"✓ Document '{title}' processed successfully")
 
     except Exception as e:
         # Clean up on error
@@ -310,6 +322,14 @@ async def chat_query(
         return result
 
     except Exception as e:
+        # Rollback transaction on error to clear failed state
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        import traceback
+        print(f"Error in chat_query: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Query failed: {str(e)}"
@@ -334,6 +354,14 @@ async def compare_policies(
         return result
 
     except Exception as e:
+        # Rollback transaction on error to clear failed state
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        import traceback
+        print(f"Error in compare_policies: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Comparison failed: {str(e)}"
