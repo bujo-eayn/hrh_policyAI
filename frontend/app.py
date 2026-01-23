@@ -284,7 +284,9 @@ def show_chat_page():
                     for i, source in enumerate(message["sources"], 1):
                         st.markdown(f"**Source {i}: {source['document_title']}** ({source['regulatory_body']})")
                         st.markdown(f"*Similarity: {source['similarity_score']:.2%}*")
-                        st.text(source['chunk_content'])
+                        # Handle varied source keys safely
+                        content = source.get('chunk_content') or source.get('content', 'No content available')
+                        st.text(content)
                         st.divider()
 
     # Chat input
@@ -306,22 +308,34 @@ def show_chat_page():
                 }
 
                 response = api_request("/chat/query", method="POST", data=query_data)
+                
+                # --- DEBUGGING: Print exact response to terminal ---
+                print(f"\n[FRONTEND DEBUG] API Response: {response}\n")
+                # -------------------------------------------------
 
                 if response:
-                    st.markdown(response["answer"])
+                    # 1. Extract Answer safely
+                    answer_text = response.get("answer", "Error: No answer provided.")
+                    
+                    st.markdown(answer_text)
+
+                    # 2. Extract Sources safely
+                    sources_list = response.get("sources", [])
 
                     # Store assistant response
                     st.session_state.messages.append({
                         "role": "assistant",
-                        "content": response["answer"],
-                        "sources": response.get("sources", [])
+                        "content": answer_text,
+                        "sources": sources_list
                     })
 
                     # Show metadata
-                    st.caption(f"⏱️ {response['processing_time']:.2f}s | 🤖 {response['model_used']}")
+                    # Handle missing time/model gracefully
+                    time_taken = response.get('processing_time', 0.0)
+                    model_name = response.get('model_used', 'Unknown Model')
+                    st.caption(f"⏱️ {time_taken:.2f}s | 🤖 {model_name}")
                 else:
                     st.error("Failed to get response from API")
-
 
 def show_compare_page():
     """Display policy comparison interface."""
