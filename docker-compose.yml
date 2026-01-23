@@ -47,7 +47,7 @@ services:
       # Ollama Configuration (running on host machine)
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_LLM_MODEL: ${OLLAMA_LLM_MODEL:-gemma3:latest}
-      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-mxbai-embed-large:latest}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
       OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-300}
 
       # Application Settings
@@ -68,7 +68,7 @@ services:
       CHUNK_SIZE: ${CHUNK_SIZE:-500}
       CHUNK_OVERLAP: ${CHUNK_OVERLAP:-50}
       DEFAULT_TOP_K: ${DEFAULT_TOP_K:-5}
-      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1024}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
       SIMILARITY_THRESHOLD: ${SIMILARITY_THRESHOLD:-0.7}
 
       # File Upload Settings
