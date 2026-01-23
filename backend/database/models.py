@@ -62,7 +62,7 @@ class DocumentChunk(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
     content = Column(Text, nullable=False)
-    embedding = Column(Vector(1024))  # 1024 dimensions for mxbai-embed-large
+    embedding = Column(Vector(768))  # 1024 dimensions for mxbai-embed-large
     chunk_index = Column(Integer, nullable=False, index=True)
     doc_metadata = Column('metadata', JSONB)
     created_at = Column(DateTime, default=datetime.utcnow)
