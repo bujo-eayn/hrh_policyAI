@@ -5,6 +5,7 @@ Orchestrates retrieval, context assembly, and response generation.
 import time
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import text  # <--- Added this import
 
 from backend.services.embeddings import embedding_service
 from backend.services.ollama_client import ollama_client
@@ -27,16 +28,6 @@ class RAGPipeline:
     ) -> Dict[str, Any]:
         """
         Execute RAG pipeline for a query.
-
-        Args:
-            db: Database session
-            query: User's question
-            regulatory_body: Optional filter by regulatory body
-            top_k: Number of documents to retrieve
-            include_sources: Whether to include source documents
-
-        Returns:
-            Dictionary with answer and sources
         """
         start_time = time.time()
 
@@ -55,31 +46,53 @@ class RAGPipeline:
                 print(f"Normalized query: '{normalized_query}'")
 
             # Step 1: Generate query embedding using normalized query
+            # (This will use the new Nomic model if .env is set correctly)
             query_embedding = await embedding_service.generate_embedding(normalized_query)
-            print(f"Query embedding generated (1024 dimensions)")
+            print(f"Query embedding generated (768 dimensions)")
 
-            # Step 2: Retrieve relevant chunks
-            retrieved_chunks = await embedding_service.similarity_search(
-                db=db,
-                query_embedding=query_embedding,
-                top_k=top_k,
-                regulatory_body=regulatory_body
-            )
+            # Step 2: Retrieve relevant chunks (DIRECT SQL EXECUTION)
+            # We execute the SQL here to ensure parameters are passed correctly.
+            
+            sql = text("""
+                SELECT 
+                    dc.content, 
+                    d.title, 
+                    d.regulatory_body,
+                    dc.document_id,
+                    dc.chunk_index,
+                    1 - (dc.embedding <=> cast(:query_embedding as vector)) as similarity
+                FROM document_chunks dc
+                JOIN documents d ON dc.document_id = d.id
+                WHERE (:regulatory_body IS NULL OR d.regulatory_body = :regulatory_body)
+                ORDER BY similarity DESC
+                LIMIT :top_k
+            """)
+
+            # Convert embedding list to string for SQL and execute
+            result_proxy = db.execute(sql, {
+                "query_embedding": str(query_embedding),
+                "regulatory_body": regulatory_body,
+                "top_k": top_k
+            })
+            
+            raw_results = result_proxy.fetchall()
+            
+            # Convert raw SQL results to the list-of-dicts format expected by the pipeline
+            retrieved_chunks = []
+            for row in raw_results:
+                retrieved_chunks.append({
+                    "content": row.content,
+                    "document_title": row.title,
+                    "regulatory_body": row.regulatory_body,
+                    "document_id": row.document_id,
+                    "chunk_index": row.chunk_index,
+                    "similarity_score": row.similarity
+                })
 
             print(f"Retrieved {len(retrieved_chunks)} relevant chunks")
 
             if not retrieved_chunks:
                 print("WARNING: No chunks retrieved! Checking if documents exist...")
-                # Debug: count documents
-                from backend.database.models import Document, DocumentChunk
-                try:
-                    doc_count = db.query(Document).count()
-                    chunk_count = db.query(DocumentChunk).count()
-                    chunk_with_embedding = db.query(DocumentChunk).filter(DocumentChunk.embedding.isnot(None)).count()
-                    print(f"Database status: {doc_count} documents, {chunk_count} total chunks, {chunk_with_embedding} with embeddings")
-                except Exception as db_error:
-                    print(f"Error checking database status: {db_error}")
-                
                 return {
                     "query": query,
                     "answer": "I couldn't find any relevant information in the policy documents to answer your question. Please try rephrasing or ask about a different topic.",
@@ -100,11 +113,11 @@ class RAGPipeline:
             if include_sources:
                 sources = [
                     {
-                        "document_id": chunk["document_id"],
+                        "document_id": str(chunk["document_id"]),
                         "document_title": chunk["document_title"],
                         "regulatory_body": chunk["regulatory_body"],
                         "chunk_content": chunk["content"][:300] + "..." if len(chunk["content"]) > 300 else chunk["content"],
-                        "similarity_score": chunk["similarity_score"],
+                        "similarity_score": float(chunk["similarity_score"]),
                         "chunk_index": chunk["chunk_index"]
                     }
                     for chunk in retrieved_chunks
@@ -143,12 +156,6 @@ class RAGPipeline:
     def _assemble_context(self, chunks: List[Dict[str, Any]]) -> str:
         """
         Assemble context from retrieved chunks.
-
-        Args:
-            chunks: List of retrieved chunks with metadata
-
-        Returns:
-            Formatted context string
         """
         context_parts = []
 
@@ -176,14 +183,6 @@ class RAGPipeline:
     ) -> str:
         """
         Generate answer using LLM with retrieved context.
-
-        Args:
-            query: User's question
-            context: Retrieved context
-            regulatory_body: Optional regulatory body filter
-
-        Returns:
-            Generated answer
         """
         # Build system prompt
         system_prompt = """You are an expert assistant for Kenya's health workforce policy interpretation.
@@ -235,15 +234,6 @@ class RAGPipeline:
     ) -> Dict[str, Any]:
         """
         Compare policies across multiple regulatory bodies.
-
-        Args:
-            db: Database session
-            query: Question about policies
-            regulatory_bodies: List of regulatory bodies to compare
-            top_k_per_body: Number of documents per body
-
-        Returns:
-            Dictionary with comparison analysis
         """
         start_time = time.time()
 
@@ -253,12 +243,40 @@ class RAGPipeline:
         # Retrieve chunks for each regulatory body
         all_chunks_by_body = {}
         for body in regulatory_bodies:
-            chunks = await embedding_service.similarity_search(
-                db=db,
-                query_embedding=query_embedding,
-                top_k=top_k_per_body,
-                regulatory_body=body
-            )
+            # We use the same raw SQL logic here to be safe
+            sql = text("""
+                SELECT 
+                    dc.content, 
+                    d.title, 
+                    d.regulatory_body,
+                    dc.document_id,
+                    dc.chunk_index,
+                    1 - (dc.embedding <=> cast(:query_embedding as vector)) as similarity
+                FROM document_chunks dc
+                JOIN documents d ON dc.document_id = d.id
+                WHERE d.regulatory_body = :regulatory_body
+                ORDER BY similarity DESC
+                LIMIT :top_k
+            """)
+
+            result_proxy = db.execute(sql, {
+                "query_embedding": str(query_embedding),
+                "regulatory_body": body,
+                "top_k": top_k_per_body
+            })
+            raw_results = result_proxy.fetchall()
+
+            chunks = []
+            for row in raw_results:
+                chunks.append({
+                    "content": row.content,
+                    "document_title": row.title,
+                    "regulatory_body": row.regulatory_body,
+                    "document_id": row.document_id,
+                    "chunk_index": row.chunk_index,
+                    "similarity_score": row.similarity
+                })
+            
             all_chunks_by_body[body] = chunks
 
         # Assemble comparison context
@@ -282,12 +300,6 @@ class RAGPipeline:
     ) -> str:
         """
         Assemble context for policy comparison.
-
-        Args:
-            chunks_by_body: Dictionary mapping regulatory body to chunks
-
-        Returns:
-            Formatted comparison context
         """
         context_parts = []
 
@@ -312,14 +324,6 @@ class RAGPipeline:
     ) -> str:
         """
         Generate comparative analysis across regulatory bodies.
-
-        Args:
-            query: User's question
-            context: Assembled context from multiple bodies
-            regulatory_bodies: List of bodies being compared
-
-        Returns:
-            Comparative analysis
         """
         system_prompt = """You are an expert in Kenya's health workforce policies.
             You specialize in comparing and contrasting policies across different regulatory bodies.
